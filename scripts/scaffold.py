@@ -2,7 +2,8 @@
 """Lay down the file skeleton for a new project.
 
 Copies the skill's templates into the target directory, substitutes placeholders,
-and creates the .claude/ command and agent files that were selected.
+and creates the command and agent files that were selected, in the layout of the
+coding agent named by --agent (Claude Code by default, or GitHub Copilot).
 
 This handles the mechanical part only. The templates arrive with HTML-comment
 guidance and `{{...}}` placeholders still in them where real content is needed —
@@ -16,6 +17,7 @@ Usage:
     scaffold.py --name "Thumbnail Studio" --dir ./thumbnail-studio
     scaffold.py --name "X" --dir . --stack next-supabase --commands commit,update-docs-and-commit
     scaffold.py --name "X" --dir . --agents changelog-writer,retro --hooks --dry-run
+    scaffold.py --name "X" --dir . --agent copilot --agents all
 """
 
 from __future__ import annotations
@@ -41,6 +43,22 @@ DOC_LAYOUT = {
     "PROJECT_STATUS.md": "docs/PROJECT_STATUS.md",
     "CLAUDE.md": "CLAUDE.md",
     "env.example": ".env.example",
+}
+
+# Where each coding agent reads project instructions, commands and subagents.
+AGENT_LAYOUT = {
+    "claude": {
+        "instructions": "CLAUDE.md",
+        "commands": (".claude/commands", ".md"),
+        "agents": (".claude/agents", ".md"),
+        "hooks": ".claude/settings.example.json",
+    },
+    "copilot": {
+        "instructions": "AGENTS.md",
+        "commands": (".github/prompts", ".prompt.md"),
+        "agents": (".github/agents", ".agent.md"),
+        "hooks": None,  # Claude Code hook config has no Copilot equivalent file
+    },
 }
 
 # Stack-specific .gitignore additions on top of the common base.
@@ -146,8 +164,10 @@ def build_gitignore(stack: str | None) -> str:
     return "\n".join(lines) + "\n"
 
 
-def copy_selected(sc: Scaffolder, src_dir: Path, names: list[str], dest_dir: str) -> None:
-    """Copy named .md files from a skill asset dir into the project's .claude dir."""
+def copy_selected(
+    sc: Scaffolder, src_dir: Path, names: list[str], dest_dir: str, suffix: str = ".md"
+) -> None:
+    """Copy named .md files from a skill asset dir into the agent's project dir."""
     for name in names:
         stem = name.strip()
         if not stem:
@@ -160,7 +180,7 @@ def copy_selected(sc: Scaffolder, src_dir: Path, names: list[str], dest_dir: str
                 file=sys.stderr,
             )
             continue
-        sc.write(f"{dest_dir}/{stem}.md", src.read_text(encoding="utf-8"))
+        sc.write(f"{dest_dir}/{stem}{suffix}", src.read_text(encoding="utf-8"))
 
 
 def parse_list(value: str | None) -> list[str]:
@@ -181,6 +201,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Scaffold a new project's files.")
     ap.add_argument("--name", required=True, help="Human-readable project name")
     ap.add_argument("--dir", required=True, help="Target project directory")
+    ap.add_argument(
+        "--agent",
+        choices=sorted(AGENT_LAYOUT),
+        default="claude",
+        help="Coding agent to lay files out for (default: claude)",
+    )
     ap.add_argument("--stack", help="Stack slug, e.g. next-supabase, fastapi, swift")
     ap.add_argument("--one-liner", default="", help="One-sentence description for CLAUDE.md")
     ap.add_argument("--milestone", default="MVP", help="Current milestone name")
@@ -212,9 +238,12 @@ def main() -> int:
     }
 
     sc = Scaffolder(root, values, args.force, args.dry_run)
+    layout = AGENT_LAYOUT[args.agent]
 
     if not args.no_docs:
         for template_name, rel in DOC_LAYOUT.items():
+            if template_name == "CLAUDE.md":
+                rel = layout["instructions"]
             sc.copy_template(template_name, rel)
         # reference/ starts with the template itself, so the shape is obvious
         # when the first feature needs documenting.
@@ -228,15 +257,17 @@ def main() -> int:
         "update-docs-and-commit",
         "create-issues",
     ]
-    copy_selected(sc, COMMANDS, expand_all(cmd_names, COMMANDS), ".claude/commands")
+    copy_selected(sc, COMMANDS, expand_all(cmd_names, COMMANDS), *layout["commands"])
 
     agent_names = expand_all(parse_list(args.agents), AGENTS)
-    copy_selected(sc, AGENTS, agent_names, ".claude/agents")
+    copy_selected(sc, AGENTS, agent_names, *layout["agents"])
 
     if args.hooks:
         src = HOOKS / "settings.example.json"
-        if src.exists():
-            sc.write(".claude/settings.example.json", src.read_text(encoding="utf-8"))
+        if layout["hooks"] is None:
+            print(f"  ! --hooks skipped: the hook config is Claude Code only, not {args.agent}")
+        elif src.exists():
+            sc.write(layout["hooks"], src.read_text(encoding="utf-8"))
 
     prefix = "(dry run) " if args.dry_run else ""
     print(f"\n{prefix}Scaffolded {args.name} in {root}\n")

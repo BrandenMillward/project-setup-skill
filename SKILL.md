@@ -5,7 +5,7 @@ description: Run the full new-project bootstrap — a planning interview that pr
 
 # Project Setup
 
-Take a rough project idea and turn it into a planned, specified, scaffolded repo that Claude Code can work in productively from day one.
+Take a rough project idea and turn it into a planned, specified, scaffolded repo that a coding agent (Claude Code, GitHub Copilot or another agent that supports skills) can work in productively from day one.
 
 Two phases, and the gate between them matters: **plan fully, get sign-off, then build.** Scaffolding a repo before the spec is settled means every file — CLAUDE.md, the architecture doc, the slash commands, the hooks — encodes guesses that get stale immediately. The spec is the source of truth everything else is generated from.
 
@@ -40,6 +40,8 @@ Everything here derives from the signed-off spec. Run `scripts/scaffold.py` to l
 ```bash
 python3 <skill-dir>/scripts/scaffold.py --name "<project-name>" --dir <project-dir> --stack <stack-slug>
 ```
+
+Pass `--agent copilot` when you are running in GitHub Copilot, or when the user will work in the repo with Copilot. It writes the project memory as `AGENTS.md` instead of `CLAUDE.md`, commands to `.github/prompts/*.prompt.md` and subagents to `.github/agents/*.agent.md`. Hooks are Claude Code only, so skip step 7 for Copilot and say so in `docs/PROJECT_STATUS.md`. Wherever the steps below say `CLAUDE.md`, read it as `AGENTS.md` for Copilot.
 
 Work through these in order. Each has a reference file with the detail; read it when you get to that step rather than all upfront.
 

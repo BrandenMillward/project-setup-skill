@@ -1,13 +1,15 @@
 # project-setup
 
-A Claude Code skill that takes a rough project idea and turns it into a planned, specified,
-scaffolded repo.
+An agent skill that takes a rough project idea and turns it into a planned, specified,
+scaffolded repo. It uses the open Agent Skills format (`SKILL.md` plus references and scripts),
+so it runs in Claude Code, GitHub Copilot and other agents that support skills.
 
 **Phase 1 — Planning:** brainstorm, a 3–5 round interview, and a `docs/project_spec.md` with
 specific requirements, jobs-to-be-done, capability-based milestones, and an engineering design
 backed by a live tech-stack research report. Gated on your sign-off.
 
-**Phase 2 — Setup:** GitHub repo, `.env` / `.env.example`, `CLAUDE.md`, the documentation set
+**Phase 2 — Setup:** GitHub repo, `.env` / `.env.example`, project memory (`CLAUDE.md` or
+`AGENTS.md`), the documentation set
 (spec, architecture, changelog, status, per-feature references), plugin and MCP server
 walkthroughs, slash commands, subagents, and hooks.
 
@@ -16,9 +18,20 @@ walkthroughs, slash commands, subagents, and hooks.
 This skill needs to be available from *outside* any project, since its whole job is starting
 new ones. Install it globally:
 
+**Claude Code**
+
 ```bash
 git clone https://github.com/BrandenMillward/project-setup-skill.git ~/.claude/skills/project-setup
 ```
+
+**GitHub Copilot** (VS Code, Visual Studio and JetBrains agent mode, Copilot CLI)
+
+```bash
+git clone https://github.com/BrandenMillward/project-setup-skill.git ~/.copilot/skills/project-setup
+```
+
+**Other agents** that support the Agent Skills format: clone it into that agent's skills
+folder, for example `~/.agents/skills/project-setup`.
 
 ## Use
 
@@ -61,6 +74,10 @@ python3 scripts/scaffold.py --name "Thumbnail Studio" --dir ./thumbnail-studio \
   --agents all --hooks
 ```
 
+Add `--agent copilot` to lay the files out for GitHub Copilot instead: `AGENTS.md` in place
+of `CLAUDE.md`, commands as `.github/prompts/*.prompt.md` and subagents as
+`.github/agents/*.agent.md`. `--hooks` is Claude Code only and is skipped for Copilot.
+
 Templates land with `{{PLACEHOLDER}}` tokens and guidance comments still in them — the agent
 fills those in from the signed-off spec. Existing files are never overwritten without
 `--force`, and `--dry-run` shows what would happen. `--stack` accepts `next`, `next-supabase`,
@@ -75,7 +92,8 @@ The two files worth editing for your own taste:
 - `references/planning-interview.md` — the question banks and the specificity examples.
 
 `assets/hooks/settings.example.json` ships with a `_README` key and `_comment` keys explaining
-each hook; strip those when copying into a real `.claude/settings.json`.
+each hook; strip those when copying into a real `.claude/settings.json`. Hooks currently
+apply to Claude Code only.
 
 ## License
 
